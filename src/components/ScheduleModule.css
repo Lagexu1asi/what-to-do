@@ -1,0 +1,34 @@
+/* 周期模块子分页切换条 */
+.sched-subtabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-warm);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.sched-subtab {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sched-subtab--active {
+  background: var(--paper);
+  color: var(--terracotta);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 单次任务空状态提示 */
+.empty-hint {
+  font-size: 12px !important;
+  color: var(--muted);
+  opacity: 0.7;
+  margin-top: 4px !important;
+}

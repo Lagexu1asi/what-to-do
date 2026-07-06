@@ -1,22 +1,27 @@
 import { useState } from 'react'
 import { INTERVAL_PRESETS } from '../data/defaults'
-import { describeInterval, formatDateShort, isDueToday, getNextDueDate } from '../hooks/useLocalStorage'
+import { describeInterval, formatDateShort, isDueToday, getNextDueDate, getTodayKey } from '../hooks/useLocalStorage'
 import './ScheduleItem.css'
 
 /**
  * ScheduleItem —— 单条家务周期设定项,可编辑周期、查看最后执行时间与下次到期
  * @param {Object} props
- * @param {Object} props.chore - 家务项 { id, title, category, interval, lastDone }
+ * @param {Object} props.chore - 家务项 { id, title, category, interval, lastDone, nextDueOverride }
  * @param {Function} props.onIntervalChange - 修改周期回调 (id, interval) => void
  * @param {Function} props.onMarkDone - 标记为今日已执行(更新 lastDone)回调
  * @param {Function} props.onResetLastDone - 清除最后执行时间回调
+ * @param {Function} props.onPresetNextDue - 预设下次执行日期 (id, 'YYYY-MM-DD') => void
+ * @param {Function} props.onClearNextDue - 清除预设下次执行日期 (id) => void
  * @param {Function} props.onDelete - 删除回调
  */
-export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onResetLastDone, onDelete }) {
+export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onResetLastDone, onPresetNextDue, onClearNextDue, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   const [customDays, setCustomDays] = useState('')
-  const due = isDueToday(chore.interval, chore.lastDone)
-  const nextDue = getNextDueDate(chore.interval, chore.lastDone)
+  // 预设日期输入框的临时值(空字符串表示未输入)
+  const [presetDraft, setPresetDraft] = useState('')
+  const due = isDueToday(chore.interval, chore.lastDone, chore.nextDueOverride)
+  const nextDue = getNextDueDate(chore.interval, chore.lastDone, chore.nextDueOverride)
+  const hasOverride = !!chore.nextDueOverride
 
   /** 应用自定义天数周期 */
   const applyCustom = () => {
@@ -25,6 +30,13 @@ export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onRe
       onIntervalChange(chore.id, n)
       setCustomDays('')
     }
+  }
+
+  /** 应用预设下次执行日期(空值不处理) */
+  const applyPreset = () => {
+    if (!presetDraft) return
+    onPresetNextDue(chore.id, presetDraft)
+    setPresetDraft('')
   }
 
   return (
@@ -51,6 +63,7 @@ export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onRe
           <span className="sched-meta-label">下次到期</span>
           <span className={`sched-meta-value ${due ? 'sched-meta-value--due' : ''}`}>
             {formatDateShort(nextDue)}
+            {hasOverride && <span className="sched-override-tag">预设</span>}
           </span>
         </div>
         <div className="sched-meta-item">
@@ -89,6 +102,35 @@ export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onRe
               应用
             </button>
           </div>
+
+          {/* 预设下次执行日期:覆盖按周期计算的下次到期,一次性(标记已执行后自动清除) */}
+          <div className="sched-edit-label">预设下次执行</div>
+          {hasOverride ? (
+            <div className="sched-preset-active">
+              <span className="sched-preset-current">
+                已设为 {formatDateShort(chore.nextDueOverride)}
+              </span>
+              <button
+                className="sched-act sched-act--del"
+                onClick={() => onClearNextDue(chore.id)}
+              >
+                清除预设
+              </button>
+            </div>
+          ) : (
+            <div className="sched-custom">
+              <input
+                type="date"
+                min={getTodayKey()}
+                value={presetDraft}
+                onChange={(e) => setPresetDraft(e.target.value)}
+                className="sched-custom-input"
+              />
+              <button className="sched-custom-btn" onClick={applyPreset} disabled={!presetDraft}>
+                设定
+              </button>
+            </div>
+          )}
 
           <div className="sched-actions">
             <button className="sched-act sched-act--done" onClick={() => onMarkDone(chore.id)}>

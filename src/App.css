@@ -48,6 +48,25 @@
   padding: 5px 10px;
   border-radius: 20px;
   margin-top: 4px;
+  /* 可编辑输入框样式:继承徽章外观,无边框 */
+  border: 1px solid transparent;
+  outline: none;
+  min-width: 40px;
+  max-width: 120px;
+  text-align: center;
+  font-family: inherit;
+  cursor: text;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.header-badge:hover {
+  border-color: var(--terracotta);
+}
+
+.header-badge:focus {
+  border-color: var(--terracotta);
+  box-shadow: 0 0 0 2px var(--terracotta-soft);
+  background: #fff;
 }
 
 /* ===== 主体 ===== */

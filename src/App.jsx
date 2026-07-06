@@ -34,6 +34,35 @@ export default function App() {
     getTodayKey(),
   );
   const [sheetOpen, setSheetOpen] = useState(false);
+  // 右上角徽章文本,默认 "PWA",用户可点击编辑并持久化
+  const [badgeText, setBadgeText] = useLocalStorage("hc_badgeText", "PWA");
+  // 单次任务列表(非周期性,设定具体执行日期,执行后不再重复)
+  // 结构:{ id, title, category, date: 'YYYY-MM-DD', done: boolean }
+  const [oneOffs, setOneOffs] = useLocalStorage("hc_oneOffs", []);
+  // 周期页子分页:'periodic' 周期任务 | 'oneoff' 单次任务
+  const [schedSubTab, setSchedSubTab] = useState("periodic");
+
+  /** 预设某条家务的下次执行日期(覆盖按周期计算的下次到期) */
+  const presetNextDue = useCallback(
+    (id, date) => {
+      setChores((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, nextDueOverride: date } : c)),
+      );
+    },
+    [setChores],
+  );
+
+  /** 清除某条家务的预设下次执行日期,恢复按周期计算 */
+  const clearNextDue = useCallback(
+    (id) => {
+      setChores((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, nextDueOverride: null } : c,
+        ),
+      );
+    },
+    [setChores],
+  );
 
   /** 每日自动重置:日期变更时清除家务完成态(保留 lastDone)与巡检状态 */
   useEffect(() => {
@@ -54,13 +83,17 @@ export default function App() {
   useEffect(() => {
     setChores((prev) => {
       const needsMigration = prev.some(
-        (c) => c.interval === undefined || c.lastDone === undefined,
+        (c) =>
+          c.interval === undefined ||
+          c.lastDone === undefined ||
+          c.nextDueOverride === undefined,
       );
       if (!needsMigration) return prev;
       return prev.map((c) => ({
         ...c,
         interval: c.interval ?? 1,
         lastDone: c.lastDone ?? null,
+        nextDueOverride: c.nextDueOverride ?? null,
         done: c.done ?? false,
       }));
     });
@@ -108,24 +141,28 @@ export default function App() {
     [setChores],
   );
 
-  /** 在周期设定页标记某条家务今日已执行(更新 lastDone 为今天) */
+  /** 在周期设定页标记某条家务今日已执行(更新 lastDone 为今天,并清除一次性预设) */
   const markChoreDone = useCallback(
     (id) => {
       setChores((prev) =>
         prev.map((c) =>
-          c.id === id ? { ...c, lastDone: getTodayKey(), done: true } : c,
+          c.id === id
+            ? { ...c, lastDone: getTodayKey(), done: true, nextDueOverride: null }
+            : c,
         ),
       );
     },
     [setChores],
   );
 
-  /** 清除某条家务的最后执行记录(重置为从未执行) */
+  /** 清除某条家务的最后执行记录(重置为从未执行,同时清除预设) */
   const resetLastDone = useCallback(
     (id) => {
       setChores((prev) =>
         prev.map((c) =>
-          c.id === id ? { ...c, lastDone: null, done: false } : c,
+          c.id === id
+            ? { ...c, lastDone: null, done: false, nextDueOverride: null }
+            : c,
         ),
       );
     },
@@ -169,11 +206,39 @@ export default function App() {
     );
   }, [setInspections]);
 
-  /** 添加新项(家务或巡检),家务默认周期1天、lastDone 为 null */
+  /** 切换单次任务完成状态 */
+  const toggleOneOff = useCallback(
+    (id) => {
+      setOneOffs((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, done: !o.done } : o)),
+      );
+    },
+    [setOneOffs],
+  );
+
+  /** 删除单次任务 */
+  const deleteOneOff = useCallback(
+    (id) => {
+      setOneOffs((prev) => prev.filter((o) => o.id !== id));
+    },
+    [setOneOffs],
+  );
+
+  /**
+   * 添加新项(家务/巡检/单次任务)
+   * - 家务(待办页或周期页周期子页):默认周期1天、lastDone 为 null
+   * - 单次任务(周期页单次子页):带执行日期 date,无周期
+   * - 巡检:进入待检态
+   */
   const handleAdd = useCallback(
-    (title, tag) => {
+    (title, tag, date) => {
       const id = `${Date.now()}`;
-      if (tab === "chores" || tab === "schedule") {
+      if (tab === "schedule" && schedSubTab === "oneoff") {
+        setOneOffs((prev) => [
+          ...prev,
+          { id, title, category: tag, date, done: false },
+        ]);
+      } else if (tab === "chores" || tab === "schedule") {
         setChores((prev) => [
           ...prev,
           {
@@ -193,7 +258,7 @@ export default function App() {
       }
       setSheetOpen(false);
     },
-    [tab, setChores, setInspections],
+    [tab, schedSubTab, setChores, setInspections, setOneOffs],
   );
 
   const sheetTags = tab === "inspection" ? INSPECTION_AREAS : CHORE_CATEGORIES;
@@ -206,7 +271,14 @@ export default function App() {
             <h1 className="app-title">今天做什么</h1>
             <p className="app-date">{formatDateZh()}</p>
           </div>
-          <div className="header-badge">PWA</div>
+          <input
+            className="header-badge"
+            value={badgeText}
+            onChange={(e) => setBadgeText(e.target.value)}
+            maxLength={12}
+            aria-label="徽章文本"
+            spellCheck={false}
+          />
         </div>
         <TabNav active={tab} onChange={setTab} />
       </header>
@@ -215,9 +287,11 @@ export default function App() {
         {tab === "chores" && (
           <ChoresModule
             chores={chores}
+            oneOffs={oneOffs}
             onToggle={toggleChore}
             onDelete={deleteChore}
             onReset={resetChores}
+            onToggleOneOff={toggleOneOff}
             onAdd={() => setSheetOpen(true)}
           />
         )}
@@ -225,10 +299,17 @@ export default function App() {
         {tab === "schedule" && (
           <ScheduleModule
             chores={chores}
+            oneOffs={oneOffs}
+            subTab={schedSubTab}
+            onSubTabChange={setSchedSubTab}
             onIntervalChange={changeInterval}
             onMarkDone={markChoreDone}
             onResetLastDone={resetLastDone}
+            onPresetNextDue={presetNextDue}
+            onClearNextDue={clearNextDue}
             onDelete={deleteChore}
+            onToggleOneOff={toggleOneOff}
+            onDeleteOneOff={deleteOneOff}
             onAdd={() => setSheetOpen(true)}
           />
         )}
@@ -247,7 +328,13 @@ export default function App() {
 
       {sheetOpen && (
         <AddItemSheet
-          type={tab === "inspection" ? "inspection" : "chore"}
+          type={
+            tab === "inspection"
+              ? "inspection"
+              : tab === "schedule" && schedSubTab === "oneoff"
+                ? "oneoff"
+                : "chore"
+          }
           tags={sheetTags}
           onAdd={handleAdd}
           onClose={() => setSheetOpen(false)}

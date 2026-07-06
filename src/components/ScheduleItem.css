@@ -196,6 +196,39 @@
   transform: scale(0.95);
 }
 
+/* 预设下次执行日期 */
+.sched-preset-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  background: var(--terracotta-soft);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--terracotta-light);
+}
+
+.sched-preset-current {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--terracotta);
+}
+
+/* 元信息区的"预设"小标签 */
+.sched-override-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--terracotta);
+  background: var(--terracotta-soft);
+  padding: 1px 6px;
+  border-radius: 6px;
+  vertical-align: middle;
+}
+
 /* 操作按钮 */
 .sched-actions {
   display: flex;

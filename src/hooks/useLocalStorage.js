@@ -66,22 +66,28 @@ function daysBetween(dateStr) {
 /**
  * isDueToday —— 根据周期与最后执行日期,判断某项家务今日是否到期
  * 从未执行过(lastDone 为 null)视为到期
+ * 若设置了 nextDueOverride(预设下次执行日期),则按该日期判定:今天 >= 预设日即到期
  * @param {number} interval - 执行周期天数
  * @param {string|null} lastDone - 最后执行日期 'YYYY-MM-DD'
+ * @param {string|null} nextDueOverride - 预设的下次执行日期 'YYYY-MM-DD'(可选)
  * @returns {boolean}
  */
-export function isDueToday(interval, lastDone) {
+export function isDueToday(interval, lastDone, nextDueOverride) {
+  if (nextDueOverride) return daysBetween(nextDueOverride) >= 0
   if (!lastDone) return true
   return daysBetween(lastDone) >= interval
 }
 
 /**
  * getNextDueDate —— 计算下次到期日期字符串
+ * 若设置了 nextDueOverride,直接返回预设日期;否则按 lastDone + interval 计算
  * @param {number} interval - 执行周期天数
  * @param {string|null} lastDone - 最后执行日期
+ * @param {string|null} nextDueOverride - 预设的下次执行日期(可选)
  * @returns {string} 下次到期日期 'YYYY-MM-DD',未执行过则返回今天
  */
-export function getNextDueDate(interval, lastDone) {
+export function getNextDueDate(interval, lastDone, nextDueOverride) {
+  if (nextDueOverride) return nextDueOverride
   if (!lastDone) return getTodayKey()
   const past = new Date(lastDone)
   past.setDate(past.getDate() + interval)
@@ -116,4 +122,17 @@ export function describeInterval(days) {
   if (days === 180) return '每半年'
   if (days % 7 === 0) return `每${days / 7}周`
   return `每${days}天`
+}
+
+/**
+ * getDayStatus —— 判断某日期相对今天的状态
+ * @param {string} dateStr - 'YYYY-MM-DD'
+ * @returns {'past'|'today'|'future'} 过期/今日/未来
+ */
+export function getDayStatus(dateStr) {
+  if (!dateStr) return 'future'
+  const diff = daysBetween(dateStr)
+  if (diff > 0) return 'past'
+  if (diff === 0) return 'today'
+  return 'future'
 }
