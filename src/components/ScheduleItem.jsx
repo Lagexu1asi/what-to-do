@@ -9,12 +9,13 @@ import './ScheduleItem.css'
  * @param {Object} props.chore - 家务项 { id, title, category, interval, lastDone, nextDueOverride }
  * @param {Function} props.onIntervalChange - 修改周期回调 (id, interval) => void
  * @param {Function} props.onMarkDone - 标记为今日已执行(更新 lastDone)回调
+ * @param {Function} props.onToggle - 撤销今日执行(恢复 lastDone)回调
  * @param {Function} props.onResetLastDone - 清除最后执行时间回调
  * @param {Function} props.onPresetNextDue - 预设下次执行日期 (id, 'YYYY-MM-DD') => void
  * @param {Function} props.onClearNextDue - 清除预设下次执行日期 (id) => void
  * @param {Function} props.onDelete - 删除回调
  */
-export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onResetLastDone, onPresetNextDue, onClearNextDue, onDelete }) {
+export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onToggle, onResetLastDone, onPresetNextDue, onClearNextDue, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   const [customDays, setCustomDays] = useState('')
   // 预设日期输入框的临时值(空字符串表示未输入)
@@ -133,9 +134,16 @@ export default function ScheduleItem({ chore, onIntervalChange, onMarkDone, onRe
           )}
 
           <div className="sched-actions">
-            <button className="sched-act sched-act--done" onClick={() => onMarkDone(chore.id)}>
-              标记今日已执行
-            </button>
+            {/* 已完成今日显示撤销按钮,未完成显示标记按钮 */}
+            {chore.done ? (
+              <button className="sched-act" onClick={() => onToggle(chore.id)}>
+                撤销今日执行
+              </button>
+            ) : (
+              <button className="sched-act sched-act--done" onClick={() => onMarkDone(chore.id)}>
+                标记今日已执行
+              </button>
+            )}
             <button className="sched-act" onClick={() => onResetLastDone(chore.id)}>
               清除执行记录
             </button>

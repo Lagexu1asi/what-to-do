@@ -15,6 +15,7 @@ import './ScheduleModule.css'
  * @param {Function} props.onSubTabChange - 切换子分页
  * @param {Function} props.onIntervalChange - 修改周期
  * @param {Function} props.onMarkDone - 标记今日已执行
+ * @param {Function} props.onToggle - 撤销今日执行(恢复 lastDone)
  * @param {Function} props.onResetLastDone - 清除执行记录
  * @param {Function} props.onPresetNextDue - 预设下次执行日期
  * @param {Function} props.onClearNextDue - 清除预设下次执行日期
@@ -30,6 +31,7 @@ export default function ScheduleModule({
   onSubTabChange,
   onIntervalChange,
   onMarkDone,
+  onToggle,
   onResetLastDone,
   onPresetNextDue,
   onClearNextDue,
@@ -109,6 +111,7 @@ export default function ScheduleModule({
                           chore={c}
                           onIntervalChange={onIntervalChange}
                           onMarkDone={onMarkDone}
+                          onToggle={onToggle}
                           onResetLastDone={onResetLastDone}
                           onPresetNextDue={onPresetNextDue}
                           onClearNextDue={onClearNextDue}

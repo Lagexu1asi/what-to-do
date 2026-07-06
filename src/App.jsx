@@ -86,7 +86,8 @@ export default function App() {
         (c) =>
           c.interval === undefined ||
           c.lastDone === undefined ||
-          c.nextDueOverride === undefined,
+          c.nextDueOverride === undefined ||
+          c.prevLastDone === undefined,
       );
       if (!needsMigration) return prev;
       return prev.map((c) => ({
@@ -94,6 +95,7 @@ export default function App() {
         interval: c.interval ?? 1,
         lastDone: c.lastDone ?? null,
         nextDueOverride: c.nextDueOverride ?? null,
+        prevLastDone: c.prevLastDone ?? null,
         done: c.done ?? false,
       }));
     });
@@ -101,7 +103,8 @@ export default function App() {
 
   /**
    * 切换某条家务的完成状态
-   * 勾选完成时同步更新 lastDone 为今天;取消勾选时保留 lastDone 不变
+   * 勾选完成时:保存原 lastDone 到 prevLastDone,再更新 lastDone 为今天
+   * 取消勾选时:从 prevLastDone 恢复 lastDone,确保任务回到"未完成"的到期状态
    */
   const toggleChore = useCallback(
     (id) => {
@@ -110,8 +113,18 @@ export default function App() {
           if (c.id !== id) return c;
           const done = !c.done;
           return done
-            ? { ...c, done: true, lastDone: getTodayKey() }
-            : { ...c, done: false };
+            ? {
+                ...c,
+                done: true,
+                prevLastDone: c.prevLastDone ?? c.lastDone,
+                lastDone: getTodayKey(),
+              }
+            : {
+                ...c,
+                done: false,
+                lastDone: c.prevLastDone ?? c.lastDone,
+                prevLastDone: null,
+              };
         }),
       );
     },
@@ -141,13 +154,19 @@ export default function App() {
     [setChores],
   );
 
-  /** 在周期设定页标记某条家务今日已执行(更新 lastDone 为今天,并清除一次性预设) */
+  /** 在周期设定页标记某条家务今日已执行(更新 lastDone 为今天,并保存原值以便撤销) */
   const markChoreDone = useCallback(
     (id) => {
       setChores((prev) =>
         prev.map((c) =>
           c.id === id
-            ? { ...c, lastDone: getTodayKey(), done: true, nextDueOverride: null }
+            ? {
+                ...c,
+                lastDone: getTodayKey(),
+                done: true,
+                prevLastDone: c.prevLastDone ?? c.lastDone,
+                nextDueOverride: null,
+              }
             : c,
         ),
       );
@@ -155,13 +174,19 @@ export default function App() {
     [setChores],
   );
 
-  /** 清除某条家务的最后执行记录(重置为从未执行,同时清除预设) */
+  /** 清除某条家务的最后执行记录(重置为从未执行,同时清除预设与撤销记录) */
   const resetLastDone = useCallback(
     (id) => {
       setChores((prev) =>
         prev.map((c) =>
           c.id === id
-            ? { ...c, lastDone: null, done: false, nextDueOverride: null }
+            ? {
+                ...c,
+                lastDone: null,
+                done: false,
+                prevLastDone: null,
+                nextDueOverride: null,
+              }
             : c,
         ),
       );
@@ -304,6 +329,7 @@ export default function App() {
             onSubTabChange={setSchedSubTab}
             onIntervalChange={changeInterval}
             onMarkDone={markChoreDone}
+            onToggle={toggleChore}
             onResetLastDone={resetLastDone}
             onPresetNextDue={presetNextDue}
             onClearNextDue={clearNextDue}
